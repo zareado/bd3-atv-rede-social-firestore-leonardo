@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" /> -
+  <title>REDE SOCIAL - FIRESTORE</title>
+
+  <link rel="stylesheet" href="./styles.css" />
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
+</head>
+
+<body>
+  
+  <header class="header_container">
+    <img src="./images/firestore.png" alt="Logo" />
+    <img src="./images/rede.png" alt="Logo" />
+    <h1>ATIVIDADE - REDE SOCIAL - FIRESTORE</h1>
+  </header>
+
+  <div class="button_post_container">
+    <button id="btn_abrir_modal">CRIAR NOVO POST</button>
+  </div>
+
+  <main class="posts_container" id="lista_posts"></main>
+
+  <div id="modalPostagem" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+
+      <div class="form_post_container">
+        <h4>ESCREVA SUA MENSAGEM</h4>
+        
+        <form id="form_conteudo">
+          <input type="text" id="input_autor" placeholder="Nome de usuário" required />
+          <br />
+          <input type="text" id="input_mensagem" placeholder="Digite um post" required />
+          <br />
+          <button type="submit" id="btn_enviar">PUBLICAR</button>
+        </form>
+      
+      </div>
+    </div>
+  </div>
+
+  <script>
+
+    const socket = io("http://localhost:3000");
+
+    
+    function obterDataFormatada() {
+      const agora = new Date();
+      const dia = String(agora.getDate()).padStart(2, '0');
+      const mes = String(agora.getMonth() + 1).padStart(2, '0');
+      const ano = agora.getFullYear();
+      const hora = String(agora.getHours()).padStart(2, '0');
+      const min = String(agora.getMinutes()).padStart(2, '0');
+      const seg = String(agora.getSeconds()).padStart(2, '0');
+      
+      return `[${dia}/${mes}/${ano} - ${hora}:${min}:${seg}]`;
+    }
+
+    function exibirNovaPostagem(dadosPost) {
+      const htmlPost = `
+        <div class="post">
+          <strong class="post-usuario">${dadosPost.usuario}</strong>
+          <p class="post-mensagem">${dadosPost.post}</p>
+          <span class="post-data">${dadosPost.data_hora}</span>
+        </div>
+      `;
+      $("#lista_posts").append(htmlPost);
+    }
+
+
+    socket.on("previousMessage", function(listaHistorico) {
+      $("#lista_posts").empty();
+      if(listaHistorico.length > 0) {
+        listaHistorico.forEach(post => exibirNovaPostagem(post));
+      }
+    });
+
+    socket.on("receivedMessage", function(novoPost) {
+      exibirNovaPostagem(novoPost);
+    });
+
+    $("#form_conteudo").on("submit", function(e) {
+      e.preventDefault();
+
+      const autor = $("#input_autor").val();
+      const mensagem = $("#input_mensagem").val();
+
+      if (autor && mensagem) {
+        
+        const objetoPost = {
+          usuario: autor,
+          post: mensagem,
+          data_hora: obterDataFormatada()
+        };
+
+        exibirNovaPostagem(objetoPost);
+
+        socket.emit("sendMessage", objetoPost);
+
+        $("#input_autor").val("");
+        $("#input_mensagem").val("");
+        $("#modalPostagem").css("display", "none");
+      }
+    });
+
+    const modal = $("#modalPostagem");
+    const btnAbrir = $("#btn_abrir_modal");
+    const btnFechar = $(".close-btn");
+
+    btnAbrir.click(function(e) {
+      e.preventDefault();
+      modal.css("display", "block");
+    });
+
+    btnFechar.click(function() {
+      modal.css("display", "none");
+    });
+    
+    $(window).click(function(e) {
+      if (e.target.id === "modalPostagem") {
+        modal.css("display", "none");
+      }
+    });
+
+  </script>
+</body>
+</html>
